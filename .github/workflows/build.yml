@@ -11,22 +11,25 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           
-      - name: Install dependencies
-        run: npm install
-        
-      - name: Build web app
-        run: npm run build
-        
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install @capacitor/cli @capacitor/core @capacitor/android --save-dev
+          
+      - name: Build web app
+        run: npm run build
+        
       - name: Build APK
         run: |
+          npx cap add android || true
           npx cap sync android
           cd android
           chmod +x gradlew
