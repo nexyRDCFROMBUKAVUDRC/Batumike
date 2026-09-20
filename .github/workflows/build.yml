@@ -29,7 +29,8 @@ jobs:
         
       - name: Build APK
         run: |
-          npx cap add android || true
+          rm -rf android
+          npx cap add android
           npx cap sync android
           cd android
           chmod +x gradlew
