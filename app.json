@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "NNECXY",
+    "slug": "nnecxy",
+    "version": "1.0.0",
+    "scheme": "cd.nnecxy.app",
+    "orientation": "portrait",
+    "icon": "./public/assets/nnecxy-icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#000000",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "bundleIdentifier": "cd.nnecxy.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "cd.nnecxy.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#000000"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "nnecxy.com",
+              "pathPrefix": "/video"
+            },
+            {
+              "scheme": "https",
+              "host": "www.nnecxy.com",
+              "pathPrefix": "/video"
+            },
+            {
+              "scheme": "https",
+              "host": "nnecxy.vercel.app",
+              "pathPrefix": "/video"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "cd.nnecxy.app"
+            },
+            {
+              "scheme": "cd.nnecxy.app",
+              "host": "auth-callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser"
+    ]
+  }
+}

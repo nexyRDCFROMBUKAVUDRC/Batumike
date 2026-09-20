@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* Lock mobile viewport & prevent keyboard from resizing/minimizing the app */
+html, body, #root {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  background-color: #000000;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Ensure data exceeding screen always scrolls smoothly */
+.scroll-container-auto {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* 4-Color Strict Palette (Noir #000000, Blanc #FFFFFF, Bleu #2563EB, Rouge #DC2626) - ZÉRO GRIS */
+html.dark, .dark {
+  color: #FFFFFF;
+  background-color: #000000;
+}
+
+html.light, .light {
+  color: #000000;
+  background-color: #FFFFFF;
+}
+
+/* Neutralisation stricte du texte gris */
+.dark [class*="text-neutral-"],
+.dark [class*="text-gray-"],
+.dark [class*="text-zinc-"],
+.dark [class*="text-slate-"] {
+  color: #FFFFFF !important;
+}
+
+.light [class*="text-neutral-"],
+.light [class*="text-gray-"],
+.light [class*="text-zinc-"],
+.light [class*="text-slate-"] {
+  color: #000000 !important;
+}
+
+/* Neutralisation stricte des bordures grises -> blanc en sombre, noir en clair */
+.dark [class*="border-neutral-"],
+.dark [class*="border-gray-"],
+.dark [class*="border-zinc-"] {
+  border-color: #FFFFFF !important;
+}
+
+.light [class*="border-neutral-"],
+.light [class*="border-gray-"],
+.light [class*="border-zinc-"] {
+  border-color: #000000 !important;
+}
+
+/* Préserver impérativement le bleu pour les boutons d'action et le rouge pour le danger */
+.bg-blue-600, [class*="bg-blue-"] {
+  background-color: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
+.text-blue-600, [class*="text-blue-"] {
+  color: #2563EB !important;
+}
+
+.bg-red-600, [class*="bg-red-"] {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+}
+
+.text-red-600, [class*="text-red-"] {
+  color: #DC2626 !important;
+}
+
+.border-red-600, [class*="border-red-"] {
+  border-color: #DC2626 !important;
+}
+
+/* 4-Color Strict Palette utility highlights */
+::selection {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+/* Custom minimal scrollbar matching 4 colors */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.8);
+}

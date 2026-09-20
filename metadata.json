@@ -1,0 +1,6 @@
+{
+  "name": "NNECXY",
+  "description": "Plateforme sociale vidéo moderne, fluide et sécurisée NNECXY V1 avec publication en un toucher, feed immersif et interactions sociales complètes.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

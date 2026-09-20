@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cd.nnecxy.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:6C:85:40:B4:81:61:90:95:2D:9C:FC:16:4A:83:B3:04:81:4F:04:77:2D:77:7D:02:3F"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nnecxy.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:6C:85:40:B4:81:61:90:95:2D:9C:FC:16:4A:83:B3:04:81:4F:04:77:2D:77:7D:02:3F"
+      ]
+    }
+  }
+]
