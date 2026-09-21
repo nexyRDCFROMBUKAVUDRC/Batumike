@@ -1,4 +1,4 @@
-name: Build NNECXY FINAL avec Logo N
+name: Build NNECXY INSTALLABLE
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 22
           
-      - name: Install & Build WEB + Logo N
+      - name: Install & Build
         env:
           VITE_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
@@ -30,25 +30,22 @@ jobs:
           npm install
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
           npm run build
-          
           rm -rf android
           npx cap add android
-          
           if [ -f "assets/icon.png" ]; then
             npx capacitor-assets generate --iconBackgroundColor '#000000' --splashBackgroundColor '#000000'
           fi
-          
           npx cap copy android
           npx cap sync android
           
-      - name: Build APK 40Mo avec Logo N
+      - name: Build APK Debug Signé
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NNECXY-APK-Logo-N-40Mo
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: NNECXY-APK-INSTALLABLE-40Mo
+          path: android/app/build/outputs/apk/debug/app-debug.apk
