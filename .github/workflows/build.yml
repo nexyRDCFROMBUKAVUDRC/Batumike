@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v4
       
@@ -19,13 +17,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # J'AI ENLEVÉ LE CACHE QUI TE BLOQUAIT
+          node-version: 22
           
-      - name: Install & Build
+      - name: Install & Build WEB
         env:
           VITE_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
@@ -33,6 +30,7 @@ jobs:
           EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
         run: |
           npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
           npm run build
           npx cap copy android
           
