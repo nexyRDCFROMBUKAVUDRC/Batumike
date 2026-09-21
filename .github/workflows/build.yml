@@ -1,43 +1,47 @@
-name: Build NNECXY APK
+name: Build NNECXY FINAL BRANCHE
+
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
           
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          
-      - name: Install dependencies
+      - name: Install & Build
+        env:
+          VITE_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
+          EXPO_PUBLIC_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
         run: |
           npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/android --save-dev
+          npm run build
+          npx cap copy android
           
-      - name: Build web app
-        run: npm run build
-        
-      - name: Build APK
+      - name: Build APK 40Mo
         run: |
-          rm -rf android
-          npx cap add android
-          npx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NNECXY-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: NNECXY-APK-FINAL-BRANCHE
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
