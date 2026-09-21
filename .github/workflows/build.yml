@@ -1,4 +1,4 @@
-name: Build NNECXY FINAL BRANCHE
+name: Build NNECXY FINAL avec Logo N
 
 on:
   push:
@@ -22,30 +22,36 @@ jobs:
         with:
           node-version: 22
           
-      - name: Install & Build WEB
+      - name: Install & Build WEB + Logo N
         env:
           VITE_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
         run: |
           npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
           npm run build
-          # Si le dossier android n'existe pas, on le crée
-          if [ ! -d "android" ]; then
-            npx cap add android
+          
+          rm -rf android
+          npx cap add android
+          
+          # Si tu as mis ton logo dans assets/icon.png, on génère
+          if [ -f "assets/icon.png" ]; then
+            npx capacitor-assets generate --iconBackgroundColor '#000000' --splashBackgroundColor '#000000'
           fi
+          
           npx cap copy android
           npx cap sync android
           
-      - name: Build APK 40Mo
-        run: |
           ls -la android/
+          
+      - name: Build APK 40Mo avec Logo N
+        run: |
           cd android
-          chmod +x gradlew || chmod +x ./gradlew
+          chmod +x gradlew
           ./gradlew assembleRelease
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NNECXY-APK-FINAL-BRANCHE
+          name: NNECXY-APK-Logo-N-40Mo
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk
