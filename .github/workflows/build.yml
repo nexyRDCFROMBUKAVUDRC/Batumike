@@ -26,18 +26,22 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
-          EXPO_PUBLIC_SUPABASE_URL: https://mxlcoetldwduylpieyfg.supabase.co
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD
         run: |
           npm install
           npm install @capacitor/core @capacitor/cli @capacitor/android
           npm run build
+          # Si le dossier android n'existe pas, on le crée
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
           npx cap copy android
+          npx cap sync android
           
       - name: Build APK 40Mo
         run: |
+          ls -la android/
           cd android
-          chmod +x gradlew
+          chmod +x gradlew || chmod +x ./gradlew
           ./gradlew assembleRelease
           
       - name: Upload APK
