@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - uses: actions/checkout@v4
       
@@ -21,7 +23,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # J'AI ENLEVÉ LE CACHE QUI TE BLOQUAIT
           
       - name: Install & Build
         env:
