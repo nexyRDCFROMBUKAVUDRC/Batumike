@@ -4,31 +4,33 @@ interface NnecxyLogoProps {
   size?: number | 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
   className?: string;
+  watermark?: boolean;
   glow?: boolean;
+  transparent?: boolean;
 }
 
 export const NnecxyLogo: React.FC<NnecxyLogoProps> = ({
   size = 'md',
   showText = false,
   className = '',
-  glow = false,
+  watermark = false,
 }) => {
-  let pixelSize = 44;
+  let pixelSize = 48;
   if (typeof size === 'number') {
     pixelSize = size;
   } else {
     switch (size) {
       case 'sm':
-        pixelSize = 32;
+        pixelSize = 36;
         break;
       case 'md':
         pixelSize = 48;
         break;
       case 'lg':
-        pixelSize = 72;
+        pixelSize = 80;
         break;
       case 'xl':
-        pixelSize = 110;
+        pixelSize = 112;
         break;
     }
   }
@@ -36,27 +38,35 @@ export const NnecxyLogo: React.FC<NnecxyLogoProps> = ({
   return (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       <div
-        className="relative flex items-center justify-center shrink-0 select-none overflow-hidden rounded-full"
+        className={`relative flex items-center justify-center shrink-0 select-none overflow-hidden rounded-2xl ${
+          watermark ? 'opacity-90' : ''
+        }`}
         style={{
           width: pixelSize,
           height: pixelSize,
         }}
       >
         <img
-          src="/logo.png"
-          alt="Logo officiel NNECXY"
+          src="/assets/logo.png"
+          onError={(e) => {
+            const target = e.currentTarget as HTMLImageElement;
+            if (target.src.indexOf('/logo.png') === -1) {
+              target.src = '/logo.png';
+            }
+          }}
+          alt="NNECXY"
           referrerPolicy="no-referrer"
-          className="w-full h-full object-contain pointer-events-none select-none"
+          className="w-full h-full object-cover pointer-events-none select-none rounded-2xl"
           loading="eager"
         />
       </div>
 
       {showText && (
         <div className="flex flex-col">
-          <span className="font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-amber-300 text-lg leading-tight">
+          <span className="font-extrabold tracking-wider text-white text-lg leading-tight">
             NNECXY
           </span>
-          <span className="text-[10px] tracking-widest uppercase text-cyan-400 font-semibold opacity-90">
+          <span className="text-[10px] tracking-widest uppercase text-blue-400 font-semibold opacity-90">
             V1 Social Mobile
           </span>
         </div>

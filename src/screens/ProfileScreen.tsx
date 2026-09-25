@@ -23,7 +23,7 @@ import {
 interface ProfileScreenProps {
   currentUser: User | null;
   onOpenSettings: () => void;
-  onNavigateToFeed: () => void;
+  onNavigateToFeed: (targetVideoId?: string) => void;
   onUpdateUser: (updated: User) => void;
 }
 
@@ -294,7 +294,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="py-16 text-center text-xs" style={{ color: theme.text }}>
               <p className="font-semibold">Vous n'avez pas encore publié de vidéo.</p>
               <button
-                onClick={onNavigateToFeed}
+                onClick={() => onNavigateToFeed()}
                 className="mt-3 text-blue-500 hover:underline font-bold"
               >
                 Explorer le feed
@@ -305,18 +305,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               {userVideos.map((video) => (
                 <div
                   key={video.id}
-                  onClick={() => setSelectedVideo(video)}
+                  onClick={() => onNavigateToFeed(video.id)}
                   className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black border cursor-pointer group"
                   style={{ borderColor: theme.border }}
+                  title="Lire directement la vidéo"
                 >
-                  <img
-                    src={video.thumbnailUrl}
-                    alt={video.caption}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  <video
+                    src={`${video.videoUrl}#t=0.001`}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform pointer-events-none"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium pointer-events-none">
                     <Heart size={10} className="fill-white" />
                     <span>{video.likesCount}</span>
                   </div>
@@ -333,18 +335,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {likedVideos.map((video) => (
               <div
                 key={video.id}
-                onClick={() => setSelectedVideo(video)}
+                onClick={() => onNavigateToFeed(video.id)}
                 className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black border cursor-pointer group"
                 style={{ borderColor: theme.border }}
+                title="Lire directement la vidéo"
               >
-                <img
-                  src={video.thumbnailUrl}
-                  alt={video.caption}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                <video
+                  src={`${video.videoUrl}#t=0.001`}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform pointer-events-none"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium pointer-events-none">
                   <Play size={10} className="fill-white" />
                   <span>{video.viewsCount}</span>
                 </div>

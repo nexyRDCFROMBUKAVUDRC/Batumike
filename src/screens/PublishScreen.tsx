@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { VideoDraft } from '../types';
+import { VideoDraft, NNECXY_CATEGORIES, NnecxyCategory } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../context/I18nContext';
 import { dataService } from '../services/dataService';
-import { ArrowLeft, Globe, Lock, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Globe, Lock, Sparkles, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
 
 interface PublishScreenProps {
   draft: VideoDraft;
@@ -16,6 +16,10 @@ export const PublishScreen: React.FC<PublishScreenProps> = ({ draft, onBack, onC
   const { t } = useI18n();
 
   const [caption, setCaption] = useState(draft.caption || '');
+  // Par défaut, la catégorie est le premier choix officiel (NNECXY_CATEGORIES[0])
+  const [selectedCategory, setSelectedCategory] = useState<NnecxyCategory>(
+    draft.category || NNECXY_CATEGORIES[0]
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>(['NNECXY', 'V1', 'Reel']);
   const [tagInput, setTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +40,10 @@ export const PublishScreen: React.FC<PublishScreenProps> = ({ draft, onBack, onC
 
   const handlePublish = async () => {
     setErrorMessage(null);
+
+    // Par défaut, si aucune catégorie n'a été expressément choisie, classer dans le choix numéro 1
+    const finalCategory: NnecxyCategory = selectedCategory || draft.category || NNECXY_CATEGORIES[0];
+
     setIsSubmitting(true);
 
     try {
@@ -59,6 +67,7 @@ export const PublishScreen: React.FC<PublishScreenProps> = ({ draft, onBack, onC
       const updatedDraft: VideoDraft = {
         ...draft,
         caption,
+        category: finalCategory,
         tags: selectedTags,
       };
 
@@ -68,6 +77,10 @@ export const PublishScreen: React.FC<PublishScreenProps> = ({ draft, onBack, onC
         setErrorMessage(result.error || t.publishFailed);
         setIsSubmitting(false);
         return;
+      }
+
+      if (result.video) {
+        dataService.setLastFeedPosition(result.video.id, 0);
       }
 
       setSuccessNotice(true);
@@ -144,6 +157,42 @@ export const PublishScreen: React.FC<PublishScreenProps> = ({ draft, onBack, onC
             <div className="text-right text-[10px] font-mono" style={{ color: theme.text }}>
               {caption.length} / 300
             </div>
+          </div>
+        </div>
+
+        {/* Official Category Selection (Section 6: Mandatory) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold flex items-center gap-1.5" style={{ color: theme.text }}>
+              <Layers size={14} className="text-blue-500" />
+              <span>Catégorie officielle <span className="text-red-500">*</span></span>
+            </label>
+            <span className="text-[10px] text-blue-500 font-semibold">10 officielles</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {NNECXY_CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between ${
+                    isSelected
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                      : 'border-white/10 hover:border-blue-500/40'
+                  }`}
+                  style={{
+                    backgroundColor: isSelected ? undefined : theme.card,
+                    color: isSelected ? '#ffffff' : theme.text,
+                  }}
+                >
+                  <span className="truncate">{cat}</span>
+                  {isSelected && <CheckCircle2 size={13} className="text-white shrink-0 ml-1" />}
+                </button>
+              );
+            })}
           </div>
         </div>
 

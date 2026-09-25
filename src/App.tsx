@@ -19,13 +19,21 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { CreatorProfileScreen } from './screens/CreatorProfileScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { MessagesScreen } from './screens/MessagesScreen';
+import { CompleteProfileScreen, ProfilePrefillData } from './screens/CompleteProfileScreen';
+import { FinishProfileScreen } from './screens/FinishProfileScreen';
+import { AuthCallbackScreen } from './screens/AuthCallbackScreen';
+import { supabase } from './services/supabase';
 import { BottomNavigation, TabType } from './components/BottomNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SplashScreen } from './components/SplashScreen';
 
 type ActiveView =
   | 'welcome'
   | 'login'
   | 'register'
+  | 'complete_profile'
+  | 'finish_profile'
+  | 'auth_callback'
   | 'rules'
   | 'main'
   | 'create_select'
@@ -38,8 +46,27 @@ const MainAppContent: React.FC = () => {
   const { theme } = useTheme();
 
   // Authentication State
+  const [showSplash, setShowSplash] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(() => dataService.getCurrentUser());
-  const [activeView, setActiveView] = useState<ActiveView>(() => (currentUser ? 'main' : 'login'));
+  const [activeView, setActiveView] = useState<ActiveView>(() => {
+    if (typeof window !== 'undefined') {
+      const { hash, search, pathname } = window.location;
+      if (
+        hash.includes('access_token') ||
+        search.includes('code=') ||
+        pathname.includes('auth/callback') ||
+        hash.includes('error=')
+      ) {
+        return 'auth_callback';
+      }
+      if (pathname.includes('finish-profile')) {
+        return 'finish_profile';
+      }
+    }
+    const user = dataService.getCurrentUser();
+    return user ? 'main' : 'login';
+  });
+  const [profilePrefill, setProfilePrefill] = useState<ProfilePrefillData | null>(null);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<TabType>('feed');
 
@@ -68,6 +95,33 @@ const MainAppContent: React.FC = () => {
 
   // Video Creation & Editing Pipeline
   const [currentDraft, setCurrentDraft] = useState<VideoDraft | null>(null);
+
+  // Initialize Supabase Auth listener (Section 26 & 28)
+  useEffect(() => {
+    const unsub = dataService.initSupabaseAuth(
+      (user: User | null) => {
+        if (user) {
+          // CAS B: Utilisateur existant avec profil complet -> Redirection directe vers le Feed
+          setCurrentUser(user);
+          setActiveView((prev) =>
+            prev === 'login' || prev === 'register' || prev === 'welcome' || prev === 'complete_profile'
+              ? 'main'
+              : prev
+          );
+          setCurrentTab('feed');
+        }
+      },
+      (prefill: ProfilePrefillData) => {
+        // CAS A: Nouvel utilisateur -> Redirection obligatoire vers "Finaliser votre profil"
+        setProfilePrefill(prefill);
+        setActiveView('complete_profile');
+      }
+    );
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   // Native phone gallery direct picker ref
   const nativeFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -108,7 +162,15 @@ const MainAppContent: React.FC = () => {
     // Keep currentUser in sync with storage & enforce session rule
     const user = dataService.getCurrentUser();
     setCurrentUser(user);
-    const publicViews: ActiveView[] = ['login', 'register', 'welcome', 'rules'];
+    const publicViews: ActiveView[] = [
+      'login',
+      'register',
+      'welcome',
+      'rules',
+      'auth_callback',
+      'finish_profile',
+      'complete_profile',
+    ];
     if (!user && !publicViews.includes(activeView)) {
       setActiveView('login');
     }
@@ -152,20 +214,21 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#09090b' }}
+      id="nnecxy-mobile-viewport"
+      className="fixed inset-0 w-full h-full min-h-[100dvh] h-[100dvh] w-screen flex flex-col overflow-hidden select-none"
+      style={{
+        backgroundColor: theme.background,
+        color: theme.text,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
     >
-      {/* Mobile Shell Container (Centered, max-w-md, rounded frame on desktop) */}
-      <div
-        id="nnecxy-mobile-viewport"
-        className="relative w-full h-full max-w-md flex flex-col overflow-hidden shadow-2xl md:h-[94vh] md:max-h-[920px] md:rounded-[36px] md:border"
-        style={{
-          backgroundColor: theme.background,
-          borderColor: theme.border,
-          color: theme.text,
-        }}
-      >
-        {/* VIEW ROUTING */}
+      {/* 0. Splash Screen Initialisation avec Logo Original */}
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
+      {/* VIEW ROUTING */}
 
         {/* 1. Welcome Screen */}
         {activeView === 'welcome' && (
@@ -211,6 +274,59 @@ const MainAppContent: React.FC = () => {
             onBack={() => {
               setLogoutNotice(null);
               setActiveView('welcome');
+            }}
+          />
+        )}
+
+        {/* 3b. Complete Profile Screen (CAS A: Nouvel utilisateur après Google OAuth) */}
+        {activeView === 'complete_profile' && profilePrefill && (
+          <CompleteProfileScreen
+            prefill={profilePrefill}
+            onComplete={(user) => {
+              setCurrentUser(user);
+              setProfilePrefill(null);
+              setActiveView('main');
+              setCurrentTab('feed');
+            }}
+            onCancel={() => {
+              dataService.logout();
+              setCurrentUser(null);
+              setProfilePrefill(null);
+              setActiveView('login');
+            }}
+          />
+        )}
+
+        {/* 3c. Auth Callback Screen (/auth/callback - Route d'authentification) */}
+        {activeView === 'auth_callback' && (
+          <AuthCallbackScreen
+            onNavigate={(route) => {
+              if (route === '/finish-profile') {
+                setActiveView('finish_profile');
+              } else if (route === '/feed') {
+                const user = dataService.getCurrentUser();
+                if (user) setCurrentUser(user);
+                setActiveView('main');
+                setCurrentTab('feed');
+              } else {
+                setActiveView('login');
+              }
+            }}
+          />
+        )}
+
+        {/* 3d. Finish Profile Screen (/finish-profile - Finalisation du profil) */}
+        {activeView === 'finish_profile' && (
+          <FinishProfileScreen
+            onSuccess={(user) => {
+              setCurrentUser(user);
+              setActiveView('main');
+              setCurrentTab('feed');
+            }}
+            onCancel={() => {
+              dataService.logout();
+              setCurrentUser(null);
+              setActiveView('login');
             }}
           />
         )}
@@ -278,6 +394,14 @@ const MainAppContent: React.FC = () => {
               setSelectedCreatorId(null);
               setActiveView('main');
             }}
+            onNavigateToFeed={(videoId) => {
+              if (videoId) {
+                setTargetDeepLinkVideoId(videoId);
+              }
+              setSelectedCreatorId(null);
+              setActiveView('main');
+              setCurrentTab('feed');
+            }}
           />
         )}
 
@@ -333,7 +457,12 @@ const MainAppContent: React.FC = () => {
                 <ProfileScreen
                   currentUser={currentUser}
                   onOpenSettings={() => setActiveView('settings')}
-                  onNavigateToFeed={() => setCurrentTab('feed')}
+                  onNavigateToFeed={(videoId) => {
+                    if (videoId) {
+                      setTargetDeepLinkVideoId(videoId);
+                    }
+                    setCurrentTab('feed');
+                  }}
                   onUpdateUser={(updated) => setCurrentUser(updated)}
                 />
               )}
@@ -363,7 +492,6 @@ const MainAppContent: React.FC = () => {
           onChange={handleNativeMediaPicked}
         />
       </div>
-    </div>
   );
 };
 

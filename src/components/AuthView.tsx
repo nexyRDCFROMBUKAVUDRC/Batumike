@@ -3,8 +3,11 @@ import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../context/I18nContext';
 import { dataService } from '../services/dataService';
 import { User } from '../types';
-import { GoogleIcon, GoogleAuthModal } from './GoogleAuthModal';
+import { supabase } from '../services/supabase';
+import { GoogleIcon } from './GoogleAuthModal';
 import { NnecxyLogo } from './NnecxyLogo';
+import { ModernDatePicker } from './ModernDatePicker';
+import { COUNTRY_CODES, CountryDialCode } from '../constants/countries';
 import {
   ArrowLeft,
   X,
@@ -29,18 +32,6 @@ export interface AuthViewProps {
 type SubScreen = 'methods' | 'form' | 'help';
 type FormTab = 'phone' | 'email';
 
-const COUNTRY_CODES = [
-  { flag: '🇫🇷', code: '+33', country: 'France' },
-  { flag: '🇨🇩', code: '+243', country: 'RDC' },
-  { flag: '🇧🇪', code: '+32', country: 'Belgique' },
-  { flag: '🇨🇭', code: '+41', country: 'Suisse' },
-  { flag: '🇨🇦', code: '+1', country: 'Canada' },
-  { flag: '🇺🇸', code: '+1', country: 'USA' },
-  { flag: '🇨🇲', code: '+237', country: 'Cameroun' },
-  { flag: '🇨🇮', code: '+225', country: 'Côte d’Ivoire' },
-  { flag: '🇸🇳', code: '+221', country: 'Sénégal' },
-];
-
 export const AuthView: React.FC<AuthViewProps> = ({
   initialMode = 'login',
   logoutNotice,
@@ -56,24 +47,24 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [subScreen, setSubScreen] = useState<SubScreen>('methods');
   const [formTab, setFormTab] = useState<FormTab>('phone');
 
-  // Google Modal
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-
   // Form State
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+  const [selectedCountry, setSelectedCountry] = useState<CountryDialCode>(COUNTRY_CODES[0]); // RD Congo (+243)
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [timer, setTimer] = useState(0);
 
-  const [identifier, setIdentifier] = useState('demo@nnecxy.com');
-  const [password, setPassword] = useState('password123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Sign up birthday verification (NNECXY 18+ requirement)
-  const [birthYear, setBirthYear] = useState('2000');
-  const [birthMonth, setBirthMonth] = useState('06');
-  const [birthDay, setBirthDay] = useState('15');
+  // Sign up civil status fields (Nom, Post-nom, Prénom)
+  const [lastName, setLastName] = useState(''); // Nom de famille
+  const [postNom, setPostNom] = useState(''); // Post-nom (poste nim)
+  const [firstName, setFirstName] = useState(''); // Prénom (pre nom)
+
+  // Date of Birth State (NNECXY 18+ requirement)
+  const [birthDate, setBirthDate] = useState('2000-06-15');
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -101,7 +92,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     setVerificationCode('839201');
   };
 
-  const handlePhoneSubmit = () => {
+  const handlePhoneSubmit = async () => {
     setErrorMessage(null);
     if (!phoneNumber.trim()) {
       setErrorMessage('Numéro de téléphone requis.');
@@ -112,10 +103,27 @@ export const AuthView: React.FC<AuthViewProps> = ({
       return;
     }
 
+    if (mode === 'signup') {
+      if (!lastName.trim() || !postNom.trim() || !firstName.trim()) {
+        setErrorMessage('Veuillez renseigner votre Nom, Post-nom et Prénom.');
+        return;
+      }
+      const age = dataService.calculateAge(birthDate);
+      if (age < 18) {
+        setErrorMessage('Vous devez avoir au moins 18 ans pour vous inscrire sur NNECXY.');
+        return;
+      }
+    }
+
     setIsLoading(true);
     const fullPhone = `${selectedCountry.code}${phoneNumber.replace(/^0+/, '')}`;
-    const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
-    const result = dataService.loginWithPhone(fullPhone, undefined, birthDate);
+    const result = await dataService.loginWithPhone({
+      phone: fullPhone,
+      name: firstName.trim() || undefined,
+      postNom: postNom.trim() || undefined,
+      surname: lastName.trim() || undefined,
+      birthDate,
+    });
     setIsLoading(false);
 
     if (result.success && result.user) {
@@ -125,7 +133,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  const handleEmailSubmit = () => {
+  const handleEmailSubmit = async () => {
     setErrorMessage(null);
     if (!identifier.trim() || !password) {
       setErrorMessage('Veuillez renseigner votre identifiant et mot de passe.');
@@ -134,7 +142,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
     setIsLoading(true);
     if (mode === 'login') {
-      const result = dataService.login(identifier, password);
+      const result = await dataService.login(identifier, password);
       setIsLoading(false);
       if (result.success && result.user) {
         onSuccess(result.user);
@@ -142,13 +150,25 @@ export const AuthView: React.FC<AuthViewProps> = ({
         setErrorMessage(result.error || 'Identifiants incorrects.');
       }
     } else {
-      // Sign up mode
-      const birthDate = `${birthYear}-${birthMonth}-${birthDay}`;
+      // Sign up mode: Nom, Post-nom, Prénom + Date de naissance
+      if (!lastName.trim() || !postNom.trim() || !firstName.trim()) {
+        setErrorMessage('Le Nom, le Post-nom et le Prénom sont obligatoires pour vous inscrire.');
+        setIsLoading(false);
+        return;
+      }
+
+      const age = dataService.calculateAge(birthDate);
+      if (age < 18) {
+        setErrorMessage('Vous devez avoir au moins 18 ans pour vous inscrire sur NNECXY.');
+        setIsLoading(false);
+        return;
+      }
+
       const isEmail = identifier.includes('@');
-      const cleanName = isEmail ? identifier.split('@')[0] : identifier;
-      const result = dataService.register({
-        name: cleanName,
-        surname: 'Membre',
+      const result = await dataService.register({
+        name: firstName.trim(),
+        postNom: postNom.trim(),
+        surname: lastName.trim(),
         email: isEmail ? identifier.trim() : `${identifier.trim()}@nnecxy.com`,
         password,
         birthDate,
@@ -168,6 +188,30 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
+  // 1. BOUTON "Continuer avec Google" (Standard OAuth sécurisé) :
+  // Au clic, fais uniquement :
+  // await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+  // Laisse le systeme Android afficher les comptes Google du telephone de KX. Ne cree pas de liste.
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        setErrorMessage(error.message);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Erreur lors de la connexion Google.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Auth Button styling
   const authBtnClass = `relative w-full h-[46px] px-4 rounded-xl border-2 flex items-center justify-center transition-all duration-150 active:scale-[0.99] select-none text-[13px] font-semibold tracking-tight shadow-xs ${
     isDark
@@ -178,7 +222,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   return (
     <div
       id="nnecxy-auth-screen"
-      className="relative flex flex-col justify-between h-full w-full max-w-md mx-auto select-none overflow-hidden"
+      className="relative flex flex-col justify-between h-full w-full select-none overflow-hidden"
       style={{ backgroundColor: theme.background, color: theme.text }}
     >
       {/* 1. NNECXY Top Navigation Bar */}
@@ -287,13 +331,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
               {/* 2. Continue with Google */}
               <button
                 id="btn-auth-method-google"
-                onClick={() => setShowGoogleModal(true)}
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
                 className={authBtnClass}
               >
                 <div className="absolute left-4 flex items-center">
                   <GoogleIcon size={19} />
                 </div>
-                <span>Continuer avec Google</span>
+                <span>{isLoading ? 'Connexion à Google...' : 'Continuer avec Google'}</span>
               </button>
             </div>
 
@@ -418,17 +463,30 @@ export const AuthView: React.FC<AuthViewProps> = ({
                       <span className="text-xs font-bold">{selectedCountry.code}</span>
                       <ChevronDown size={14} style={{ color: theme.text }} />
                       <select
-                        value={selectedCountry.code}
+                        id="select-auth-country-code"
+                        value={selectedCountry.id}
                         onChange={(e) => {
-                          const found = COUNTRY_CODES.find((c) => c.code === e.target.value);
+                          const found = COUNTRY_CODES.find((c) => c.id === e.target.value);
                           if (found) setSelectedCountry(found);
                         }}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                       >
-                        {COUNTRY_CODES.map((c) => (
-                          <option key={c.code + c.country} value={c.code} style={{ backgroundColor: theme.background, color: theme.text }}>
-                            {c.flag} {c.country} ({c.code})
-                          </option>
+                        {(['Afrique', 'Europe', 'Amérique', 'Asie', 'Océanie'] as const).map((region) => (
+                          <optgroup
+                            key={region}
+                            label={`🌍 ${region}`}
+                            style={{ backgroundColor: theme.card, color: theme.text, fontWeight: 'bold' }}
+                          >
+                            {COUNTRY_CODES.filter((c) => c.region === region).map((c) => (
+                              <option
+                                key={c.id}
+                                value={c.id}
+                                style={{ backgroundColor: theme.background, color: theme.text }}
+                              >
+                                {c.flag} {c.country} ({c.code})
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>
@@ -471,62 +529,81 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     </button>
                   </div>
 
-                  {/* If signing up: Date of Birth step (NNECXY 18+ requirement) */}
+                  {/* If signing up: Nom, Post-nom, Prénom + Date of Birth step */}
                   {mode === 'signup' && (
-                    <div className="pt-2 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold" style={{ color: theme.text }}>
-                          Date de naissance
+                    <div className="space-y-3 pt-1">
+                      {/* Section Title */}
+                      <div className="flex items-center gap-1.5 pb-1 border-b" style={{ borderColor: theme.border }}>
+                        <UserIcon size={14} className="text-blue-500" />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.text }}>
+                          Identité officielle
                         </span>
-                        <span className="text-[11px] font-bold text-blue-600">18 ans et plus requis</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <select
-                          value={birthDay}
-                          onChange={(e) => setBirthDay(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
-                            <option key={d} value={d} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={birthMonth}
-                          onChange={(e) => setBirthMonth(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {[
-                            '01 - Jan', '02 - Fév', '03 - Mar', '04 - Avr',
-                            '05 - Mai', '06 - Juin', '07 - Juil', '08 - Aoû',
-                            '09 - Sep', '10 - Oct', '11 - Nov', '12 - Déc'
-                          ].map((m, idx) => (
-                            <option key={m} value={String(idx + 1).padStart(2, '0')} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={birthYear}
-                          onChange={(e) => setBirthYear(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {Array.from({ length: 70 }, (_, i) => String(2007 - i)).map((y) => (
-                            <option key={y} value={y} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {y}
-                            </option>
-                          ))}
-                        </select>
+
+                      {/* Nom, Post-nom, Prénom */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {/* 1. Nom */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Nom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-phone-lastname"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="ex: BATUMIKE"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-bold focus:outline-none focus:border-blue-500 transition-all uppercase"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+
+                        {/* 2. Post-nom (poste nim) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Post-nom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-phone-postnom"
+                            value={postNom}
+                            onChange={(e) => setPostNom(e.target.value)}
+                            placeholder="ex: KABAZI"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-bold focus:outline-none focus:border-blue-500 transition-all uppercase"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+
+                        {/* 3. Prénom (pre nom) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Prénom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-phone-firstname"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="ex: Justin"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-semibold focus:outline-none focus:border-blue-500 transition-all capitalize"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Date de Naissance (Format : Jour | Mois | Année) */}
+                      <div className="pt-1">
+                        <ModernDatePicker
+                          value={birthDate}
+                          onChange={(d) => setBirthDate(d)}
+                          requiredAge={18}
+                        />
                       </div>
                     </div>
                   )}
 
                   {errorMessage && (
-                    <div className="p-3 rounded-xl border-2 border-red-600 bg-red-600 text-white text-xs flex items-center gap-2 font-bold">
+                    <div className="p-3 rounded-xl border-2 border-red-600 bg-red-600 text-white text-xs flex items-center gap-2 font-bold animate-shake">
                       <AlertCircle size={15} className="shrink-0" />
                       <span>{errorMessage}</span>
                     </div>
@@ -537,8 +614,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     id="btn-auth-phone-submit"
                     type="button"
                     onClick={handlePhoneSubmit}
-                    disabled={isLoading || !phoneNumber.trim() || !verificationCode.trim()}
-                    className="w-full h-11 mt-4 rounded-sm font-bold text-xs text-white bg-blue-600 hover:bg-blue-700 active:scale-98 disabled:opacity-40 transition-all flex items-center justify-center shadow-md shadow-blue-600/20"
+                    disabled={
+                      isLoading ||
+                      !phoneNumber.trim() ||
+                      !verificationCode.trim() ||
+                      (mode === 'signup' &&
+                        (!lastName.trim() ||
+                          !postNom.trim() ||
+                          !firstName.trim()))
+                    }
+                    className="w-full h-11 mt-4 rounded-xl font-bold text-xs text-white bg-blue-600 hover:bg-blue-700 active:scale-98 disabled:opacity-40 transition-all flex items-center justify-center shadow-md shadow-blue-600/20"
                   >
                     {isLoading ? (
                       <RotateCw size={16} className="animate-spin" />
@@ -553,123 +638,164 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
               {/* TAB 2: EMAIL / USERNAME LOGIN */}
               {formTab === 'email' && (
-                <div className="space-y-4">
+                <div className="space-y-3.5">
+                  {/* If signing up: Nom, Post-nom, Prénom */}
+                  {mode === 'signup' && (
+                    <div className="space-y-3 pt-1">
+                      {/* Section Title */}
+                      <div className="flex items-center gap-1.5 pb-1 border-b" style={{ borderColor: theme.border }}>
+                        <UserIcon size={14} className="text-blue-500" />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: theme.text }}>
+                          Identité officielle
+                        </span>
+                      </div>
+
+                      {/* Nom, Post-nom, Prénom */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {/* 1. Nom */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Nom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-email-lastname"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder="ex: BATUMIKE"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-bold focus:outline-none focus:border-blue-500 transition-all uppercase"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+
+                        {/* 2. Post-nom (poste nim) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Post-nom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-email-postnom"
+                            value={postNom}
+                            onChange={(e) => setPostNom(e.target.value)}
+                            placeholder="ex: KABAZI"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-bold focus:outline-none focus:border-blue-500 transition-all uppercase"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+
+                        {/* 3. Prénom (pre nom) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Prénom <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="input-auth-email-firstname"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder="ex: Justin"
+                            className="w-full px-3 py-2.5 rounded-xl border-2 text-xs font-semibold focus:outline-none focus:border-blue-500 transition-all capitalize"
+                            style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Email / Username Input */}
-                  <div
-                    className="rounded-xl border-2 overflow-hidden"
-                    style={{ borderColor: theme.border, backgroundColor: theme.card }}
-                  >
-                    <input
-                      type="text"
-                      id="input-auth-email"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder={
-                        mode === 'signup'
-                          ? 'Adresse e-mail'
-                          : 'E-mail ou nom d’utilisateur'
-                      }
-                      className="w-full px-3.5 py-3 bg-transparent text-xs focus:outline-none font-medium"
-                      style={{ color: theme.text }}
-                    />
+                  <div>
+                    <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                      {mode === 'signup' ? (
+                        <>
+                          Adresse e-mail <span className="text-red-500">*</span>
+                        </>
+                      ) : (
+                        'E-mail ou nom d’utilisateur'
+                      )}
+                    </label>
+                    <div
+                      className="rounded-xl border-2 overflow-hidden"
+                      style={{ borderColor: theme.border, backgroundColor: theme.card }}
+                    >
+                      <input
+                        type="text"
+                        id="input-auth-email"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder={
+                          mode === 'signup'
+                            ? 'votre.email@exemple.com'
+                            : 'E-mail ou @nom_utilisateur'
+                        }
+                        className="w-full px-3.5 py-3 bg-transparent text-xs focus:outline-none font-medium"
+                        style={{ color: theme.text }}
+                      />
+                    </div>
                   </div>
 
                   {/* Password Input with Eye */}
-                  <div
-                    className="relative rounded-xl border-2 overflow-hidden"
-                    style={{ borderColor: theme.border, backgroundColor: theme.card }}
-                  >
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      id="input-auth-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Mot de passe"
-                      className="w-full px-3.5 py-3 bg-transparent text-xs focus:outline-none font-medium pr-10"
-                      style={{ color: theme.text }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-80"
-                      style={{ color: theme.text }}
+                  <div>
+                    <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                      Mot de passe <span className="text-red-500">*</span>
+                    </label>
+                    <div
+                      className="relative rounded-xl border-2 overflow-hidden"
+                      style={{ borderColor: theme.border, backgroundColor: theme.card }}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        id="input-auth-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Mot de passe sécurisé"
+                        className="w-full px-3.5 py-3 bg-transparent text-xs focus:outline-none font-medium pr-10"
+                        style={{ color: theme.text }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-80"
+                        style={{ color: theme.text }}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Forgot Password Link in Login mode */}
+                  {/* Forgot Password Link in Login mode (Section 18) */}
                   {mode === 'login' && (
                     <div className="text-right">
                       <button
                         type="button"
                         onClick={() => {
-                          setErrorMessage('Pour réinitialiser votre mot de passe, utilisez la connexion par SMS ou Google.');
+                          if (identifier.includes('@')) {
+                            const res = dataService.recoverAccountByEmail(identifier);
+                            setErrorMessage(res.message || 'Lien de récupération envoyé.');
+                          } else {
+                            setErrorMessage('Pour récupérer votre compte par numéro de téléphone ou e-mail, utilisez l\'Aide ou la vérification SMS sécurisée.');
+                          }
                         }}
-                        className="text-xs hover:underline"
-                        style={{ color: theme.text }}
+                        className="text-xs text-blue-500 hover:underline"
                       >
                         Mot de passe oublié ?
                       </button>
                     </div>
                   )}
 
-                  {/* If signing up: Date of Birth step */}
+                  {/* If signing up: Date de Naissance (Format : Jour | Mois | Année) */}
                   {mode === 'signup' && (
-                    <div className="pt-2 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold" style={{ color: theme.text }}>
-                          Date de naissance
-                        </span>
-                        <span className="text-[11px] font-bold text-blue-600">18 ans et plus requis</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <select
-                          value={birthDay}
-                          onChange={(e) => setBirthDay(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
-                            <option key={d} value={d} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={birthMonth}
-                          onChange={(e) => setBirthMonth(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {[
-                            '01 - Jan', '02 - Fév', '03 - Mar', '04 - Avr',
-                            '05 - Mai', '06 - Juin', '07 - Juil', '08 - Aoû',
-                            '09 - Sep', '10 - Oct', '11 - Nov', '12 - Déc'
-                          ].map((m, idx) => (
-                            <option key={m} value={String(idx + 1).padStart(2, '0')} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={birthYear}
-                          onChange={(e) => setBirthYear(e.target.value)}
-                          className="px-2.5 py-2.5 rounded-xl border-2 text-xs font-semibold"
-                          style={{ borderColor: theme.border, backgroundColor: theme.card, color: theme.text }}
-                        >
-                          {Array.from({ length: 70 }, (_, i) => String(2007 - i)).map((y) => (
-                            <option key={y} value={y} style={{ backgroundColor: theme.background, color: theme.text }}>
-                              {y}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="pt-1">
+                      <ModernDatePicker
+                        value={birthDate}
+                        onChange={(d) => setBirthDate(d)}
+                        requiredAge={18}
+                      />
                     </div>
                   )}
 
                   {errorMessage && (
-                    <div className="p-3 rounded-xl border-2 border-red-600 bg-red-600 text-white text-xs flex items-center gap-2 font-bold">
+                    <div className="p-3 rounded-xl border-2 border-red-600 bg-red-600 text-white text-xs flex items-center gap-2 font-bold animate-shake">
                       <AlertCircle size={15} className="shrink-0" />
                       <span>{errorMessage}</span>
                     </div>
@@ -680,8 +806,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     id="btn-auth-email-submit"
                     type="button"
                     onClick={handleEmailSubmit}
-                    disabled={isLoading || !identifier.trim() || !password}
-                    className="w-full h-11 mt-4 rounded-xl font-bold text-xs text-white bg-blue-600 hover:bg-blue-700 active:scale-98 disabled:opacity-40 transition-all flex items-center justify-center shadow-md"
+                    disabled={
+                      isLoading ||
+                      !identifier.trim() ||
+                      !password ||
+                      (mode === 'signup' &&
+                        (!lastName.trim() ||
+                          !postNom.trim() ||
+                          !firstName.trim()))
+                    }
+                    className="w-full h-11 mt-4 rounded-xl font-bold text-xs text-white bg-blue-600 hover:bg-blue-700 active:scale-98 disabled:opacity-40 transition-all flex items-center justify-center shadow-md shadow-blue-600/20"
                   >
                     {isLoading ? (
                       <RotateCw size={16} className="animate-spin" />
@@ -735,13 +869,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
 
               <div
-                onClick={() => setShowGoogleModal(true)}
+                onClick={handleGoogleSignIn}
                 className="p-3.5 rounded-xl border-2 cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ borderColor: theme.border, backgroundColor: theme.card }}
               >
-                <h4 className="text-xs font-bold text-blue-600">Connexion Google One-Tap</h4>
+                <h4 className="text-xs font-bold text-blue-600">Connexion Google Officielle</h4>
                 <p className="text-[11px] mt-0.5" style={{ color: theme.text }}>
-                  Utilisez le compte Google synchronisé avec votre téléphone pour une connexion sécurisée en un clic.
+                  Utilisez le compte Google synchronisé avec votre téléphone pour une connexion sécurisée avec le sélecteur officiel Google.
                 </p>
               </div>
 
@@ -815,13 +949,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </p>
         )}
       </div>
-
-      {/* Google Auth Modal (Device Account Selection) */}
-      <GoogleAuthModal
-        isOpen={showGoogleModal}
-        onClose={() => setShowGoogleModal(false)}
-        onSuccess={onSuccess}
-      />
     </div>
   );
 };

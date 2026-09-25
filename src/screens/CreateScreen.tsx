@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { VideoDraft } from '../types';
+import { VideoDraft, NNECXY_CATEGORIES } from '../types';
 
 interface CreateScreenProps {
   onSelectVideo?: (draft: VideoDraft) => void;
@@ -35,6 +35,7 @@ export const CreateScreen: React.FC<CreateScreenProps> = ({ onSelectVideo, onClo
           size: file.size,
           type: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
           duration: isVideo ? 15 : undefined,
+          category: NNECXY_CATEGORIES[0], // Choix numéro 1 par défaut
           audioTrack: 'Son original',
           audioVolume: 100,
           textOverlays: [],

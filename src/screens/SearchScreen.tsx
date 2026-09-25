@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../context/I18nContext';
 import { dataService } from '../services/dataService';
 import { saveVideoToGallery } from '@/services/gallerySaver';
+import { MemberActionModal } from '../components/MemberActionModal';
 import {
   Search as SearchIcon,
   X,
@@ -38,6 +39,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   const [activeFilter, setActiveFilter] = useState<'all' | 'users' | 'videos'>('all');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [followedMap, setFollowedMap] = useState<Record<string, boolean>>({});
+  const [actionMember, setActionMember] = useState<User | null>(null);
 
   const results = dataService.search(query);
   const allUsers = dataService.getAllUsers();
@@ -149,7 +151,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                   <div
                     key={user.id}
                     id={`suggested-user-${user.id}`}
-                    onClick={() => onOpenCreator(user.id)}
+                    onClick={() => setActionMember(user)}
                     className="p-3 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer hover:border-blue-500/50 active:scale-98 transition-all"
                     style={{ backgroundColor: theme.card, borderColor: theme.border }}
                   >
@@ -257,7 +259,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                       <div
                         key={user.id}
                         id={`search-user-${user.id}`}
-                        onClick={() => onOpenCreator(user.id)}
+                        onClick={() => setActionMember(user)}
                         className="p-3 rounded-2xl border flex items-center justify-between gap-3 cursor-pointer hover:border-blue-500/50 active:scale-98 transition-all"
                         style={{ backgroundColor: theme.card, borderColor: theme.border }}
                       >
@@ -411,6 +413,29 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Member Action Modal */}
+      {actionMember && (
+        <MemberActionModal
+          isOpen={Boolean(actionMember)}
+          member={actionMember}
+          currentUser={currentUser || null}
+          onClose={() => setActionMember(null)}
+          onOpenCreatorProfile={(userId) => {
+            setActionMember(null);
+            onOpenCreator(userId);
+          }}
+          onOpenDirectChat={(userId) => {
+            setActionMember(null);
+            if (onOpenDirectChat) {
+              onOpenDirectChat(userId);
+            }
+          }}
+          onFollowChanged={(userId, isFollowed) => {
+            setFollowedMap((prev) => ({ ...prev, [userId]: isFollowed }));
+          }}
+        />
       )}
     </div>
   );

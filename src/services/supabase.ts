@@ -1,8 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
-const supabaseUrl = metaEnv.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = metaEnv.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl =
+  metaEnv.VITE_SUPABASE_URL || 'https://mxlcoetldwduylpieyfg.supabase.co';
+const supabaseAnonKey =
+  metaEnv.VITE_SUPABASE_ANON_KEY || 'sb_publishable_jmtHvlFLu3hKE-8ihABC6w_D8GAunZD';
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
@@ -13,9 +15,14 @@ export const isSupabaseConfigured = (): boolean => {
   );
 };
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured()
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
+});
 
 export const BUCKETS = {
   VIDEOS: 'videos',

@@ -3,7 +3,7 @@
     "name": "NNECXY",
     "slug": "nnecxy",
     "version": "1.0.0",
-    "scheme": "cd.nnecxy.app",
+    "scheme": "nnecxy",
     "orientation": "portrait",
     "icon": "./public/assets/nnecxy-icon.png",
     "userInterfaceStyle": "dark",
@@ -49,6 +49,13 @@
         {
           "action": "VIEW",
           "data": [
+            {
+              "scheme": "nnecxy"
+            },
+            {
+              "scheme": "nnecxy",
+              "host": "auth-callback"
+            },
             {
               "scheme": "cd.nnecxy.app"
             },

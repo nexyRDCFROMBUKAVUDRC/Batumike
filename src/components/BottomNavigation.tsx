@@ -27,10 +27,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   return (
     <nav
       id="bottom-navigation-bar"
-      className="relative z-30 flex items-center justify-around h-14 border-t select-none max-w-md mx-auto w-full transition-colors"
+      className="relative z-30 flex items-center justify-around h-14 border-t select-none w-full transition-colors"
       style={{
         backgroundColor: theme.navBackground,
         borderColor: theme.border,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {/* 1. Accueil / Feed */}

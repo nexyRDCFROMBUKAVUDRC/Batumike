@@ -10,12 +10,14 @@ interface CreatorProfileScreenProps {
   userId: string;
   currentUser: User | null;
   onBack: () => void;
+  onNavigateToFeed?: (targetVideoId?: string) => void;
 }
 
 export const CreatorProfileScreen: React.FC<CreatorProfileScreenProps> = ({
   userId,
   currentUser,
   onBack,
+  onNavigateToFeed,
 }) => {
   const { theme } = useTheme();
   const { t } = useI18n();
@@ -171,18 +173,26 @@ export const CreatorProfileScreen: React.FC<CreatorProfileScreenProps> = ({
             {videos.map((video) => (
               <div
                 key={video.id}
-                onClick={() => setSelectedVideo(video)}
+                onClick={() => {
+                  if (onNavigateToFeed) {
+                    onNavigateToFeed(video.id);
+                  } else {
+                    setSelectedVideo(video);
+                  }
+                }}
                 className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black border cursor-pointer group"
                 style={{ borderColor: theme.border }}
+                title="Lire directement la vidéo"
               >
-                <img
-                  src={video.thumbnailUrl}
-                  alt={video.caption}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                <video
+                  src={`${video.videoUrl}#t=0.001`}
+                  preload="metadata"
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform pointer-events-none"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 text-[10px] text-white font-medium pointer-events-none">
                   <Play size={10} className="fill-white" />
                   <span>{video.viewsCount}</span>
                 </div>

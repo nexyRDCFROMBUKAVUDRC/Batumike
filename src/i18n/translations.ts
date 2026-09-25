@@ -169,7 +169,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'Les mots de passe ne correspondent pas.',
     forgotPassword: 'Mot de passe oublié ?',
     recoverAccount: 'Récupérer mon compte',
-    googleUnavailableNotice: "Google OAuth sera activé dès la configuration des clés Supabase/Google Cloud.",
+    googleUnavailableNotice: "L'authentification OAuth sera activée dès la configuration des clés cloud.",
     invalidCredentials: 'Identifiants invalides. Veuillez vérifier vos informations.',
 
     noVideosTitle: 'Aucune vidéo disponible pour le moment.',
@@ -290,7 +290,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'Passwords do not match.',
     forgotPassword: 'Forgot password?',
     recoverAccount: 'Recover account',
-    googleUnavailableNotice: 'Google OAuth will be activated upon Supabase/Google Cloud configuration.',
+    googleUnavailableNotice: 'OAuth authentication will be activated upon cloud configuration.',
     invalidCredentials: 'Invalid credentials. Please verify your details.',
 
     noVideosTitle: 'No videos available right now.',
@@ -411,7 +411,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'Manenosiri hayafanani.',
     forgotPassword: 'Umesahau nenosiri?',
     recoverAccount: 'Rejesha akaunti',
-    googleUnavailableNotice: 'Google OAuth itawashwa mara baada ya usanidi wa Supabase.',
+    googleUnavailableNotice: 'Uthibitishaji wa OAuth utawashwa mara baada ya usanidi wa seva za wingu.',
     invalidCredentials: 'Taarifa si sahihi. Tafadhali hakiki maelezo yako.',
 
     noVideosTitle: 'Hakuna video inayopatikana kwa sasa.',
@@ -653,7 +653,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'Kalmomin sirri ba su dace ba.',
     forgotPassword: 'Manta kalmar sirri?',
     recoverAccount: 'Dawo da asusu',
-    googleUnavailableNotice: 'Za a kunna Google OAuth bayan kammala saitunan Supabase.',
+    googleUnavailableNotice: 'Za a kunna shiga ta OAuth bayan kammala saitunan sabar gajimare.',
     invalidCredentials: 'Bayanai ba su yi daidai ba.',
 
     noVideosTitle: 'Babu bidiyo a halin yanzu.',
@@ -774,7 +774,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'As senhas não coincidem.',
     forgotPassword: 'Esqueceu a senha?',
     recoverAccount: 'Recuperar conta',
-    googleUnavailableNotice: 'Google OAuth será ativado após a configuração do Supabase.',
+    googleUnavailableNotice: 'A autenticação OAuth será ativada após a configuração do serviço em nuvem.',
     invalidCredentials: 'Dados incorretos. Por favor verifique suas informações.',
 
     noVideosTitle: 'Nenhum vídeo disponível no momento.',
@@ -895,7 +895,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'كلمات المرور غير متطابقة.',
     forgotPassword: 'نسيت كلمة المرور؟',
     recoverAccount: 'استعادة الحساب',
-    googleUnavailableNotice: 'سيتم تفعيل Google OAuth بمجرد ضبط إعدادات Supabase.',
+    googleUnavailableNotice: 'سيتم تفعيل تسجيل الدخول بمجرد ضبط إعدادات الخدمة السحابية.',
     invalidCredentials: 'بيانات الاعتماد غير صالحة. يرجى التحقق.',
 
     noVideosTitle: 'لا توجد مقاطع فيديو حاليًا.',
@@ -1016,7 +1016,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'Las contraseñas no coinciden.',
     forgotPassword: '¿Olvidaste tu contraseña?',
     recoverAccount: 'Recuperar cuenta',
-    googleUnavailableNotice: 'Google OAuth se activará tras la configuración de Supabase.',
+    googleUnavailableNotice: 'La autenticación OAuth se activará tras la configuración del servicio en la nube.',
     invalidCredentials: 'Credenciales inválidas. Por favor verifica tus datos.',
 
     noVideosTitle: 'No hay videos disponibles por el momento.',
@@ -1137,7 +1137,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: '两次输入的密码不一致。',
     forgotPassword: '忘记密码？',
     recoverAccount: '恢复账户',
-    googleUnavailableNotice: 'Google OAuth 将在配置 Supabase 后自动开启。',
+    googleUnavailableNotice: '外部认证服务将在配置云端凭据后自动开启。',
     invalidCredentials: '凭据无效，请核对信息。',
 
     noVideosTitle: '暂无可用视频。',
@@ -1258,7 +1258,7 @@ export const translations: Record<SupportedLanguage, TranslationDict> = {
     passwordsMismatch: 'पासवर्ड मेल नहीं खाते।',
     forgotPassword: 'पासवर्ड भूल गए?',
     recoverAccount: 'खाता पुनर्प्राप्त करें',
-    googleUnavailableNotice: 'Supabase कॉन्फ़िगरेशन के बाद Google OAuth सक्रिय होगा।',
+    googleUnavailableNotice: 'क्लाउड सेवा कॉन्फ़िगरेशन के बाद प्रमाणीकरण सक्रिय होगा।',
     invalidCredentials: 'अमान्य विवरण। कृपया जांचें।',
 
     noVideosTitle: 'फिलहाल कोई वीडियो उपलब्ध नहीं है।',

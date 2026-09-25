@@ -24,6 +24,8 @@ import {
   Music,
   RefreshCw,
   Users,
+  Play,
+  Pause,
 } from 'lucide-react';
 
 interface FeedScreenProps {
@@ -44,30 +46,60 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
   const { theme } = useTheme();
   const { t } = useI18n();
 
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [videos, setVideos] = useState<Video[]>(() => dataService.getFeedVideos(0, 15));
+  const [activeIndex, setActiveIndex] = useState(() => {
+    const saved = dataService.getLastFeedPosition();
+    return saved.index || 0;
+  });
+  const [loadedVideos, setLoadedVideos] = useState<Record<string, boolean>>({});
   const [isMuted, setIsMuted] = useState(false);
   const userExplicitlyMuted = useRef(false);
-  const [volumeToast, setVolumeToast] = useState<string | null>(null);
 
   const [doubleTapHeart, setDoubleTapHeart] = useState<{ x: number; y: number } | null>(null);
   const [activeCommentVideoId, setActiveCommentVideoId] = useState<string | null>(null);
   const [activeReportVideoId, setActiveReportVideoId] = useState<string | null>(null);
+  const [pausedVideoId, setPausedVideoId] = useState<string | null>(null);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null);
   const [showCommunityModal, setShowCommunityModal] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const lastTapRef = useRef<number>(0);
+  const clickTimerRef = useRef<any>(null);
+  const batchRef = useRef<number>(0);
+  const previousActiveIndex = useRef<number>(-1);
+  const hasScrolledToTarget = useRef<string | null>(null);
 
   const loadFeed = () => {
-    const list = dataService.getVideos();
+    batchRef.current = 0;
+    const list = dataService.getFeedVideos(0, 15);
     setVideos(list);
+  };
+
+  const loadMoreVideos = () => {
+    batchRef.current += 1;
+    const nextBatch = dataService.getFeedVideos(batchRef.current, 10);
+    if (nextBatch.length > 0) {
+      setVideos((prev) => [...prev, ...nextBatch]);
+    }
   };
 
   useEffect(() => {
     loadFeed();
+
+    // Section 13: Restaurer la position de lecture après interaction ou retour au feed
+    const savedPos = dataService.getLastFeedPosition();
+    if (!targetVideoId && savedPos.videoId) {
+      const idx = videos.findIndex((v) => v.id === savedPos.videoId);
+      if (idx !== -1) {
+        setActiveIndex(idx);
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = idx * containerRef.current.clientHeight;
+          }
+        }, 60);
+      }
+    }
 
     const handleCustomToast = (e: Event) => {
       const customEvent = e as CustomEvent<{ message?: string }>;
@@ -83,36 +115,45 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     };
   }, []);
 
-  // Deep Link handler: Scroll to target video if targetVideoId is provided
+  // Deep Link handler: Scroll to target video if targetVideoId is provided (se lance une seule fois par cible)
   useEffect(() => {
-    if (targetVideoId && videos.length > 0) {
+    if (targetVideoId && hasScrolledToTarget.current !== targetVideoId && videos.length > 0) {
       const targetIndex = videos.findIndex((v) => v.id === targetVideoId);
       if (targetIndex !== -1) {
+        hasScrolledToTarget.current = targetVideoId;
         setActiveIndex(targetIndex);
         if (containerRef.current) {
-          const childEl = containerRef.current.children[targetIndex] as HTMLElement;
-          if (childEl) {
-            childEl.scrollIntoView({ behavior: 'smooth' });
-          }
+          containerRef.current.scrollTop = targetIndex * containerRef.current.clientHeight;
         }
       }
     }
   }, [targetVideoId, videos]);
 
-  // Handle active video playback with immediate sound & pause/mute others on scroll
+  // Handle active video playback:
+  // IMPORTANT: Reactions (like, follow, comments, etc.) MUST NEVER restart the video from 0!
+  // Only reset currentTime to 0 when user actually scrolls to a DIFFERENT video.
   useEffect(() => {
+    const isDifferentVideo = previousActiveIndex.current !== activeIndex;
+
     videoRefs.current.forEach((videoEl, index) => {
       if (!videoEl) return;
       if (index === activeIndex) {
-        videoEl.currentTime = 0;
+        if (isDifferentVideo && videoEl.currentTime > 0.5) {
+          videoEl.currentTime = 0;
+        }
         videoEl.muted = isMuted;
-        const playPromise = videoEl.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Autoplay policy fallback: mute & play until first user interaction
-            videoEl.muted = true;
-            videoEl.play().catch(() => {});
-          });
+
+        if ((isDifferentVideo || videoEl.paused) && pausedVideoId !== videos[activeIndex]?.id) {
+          if (videoEl.paused) {
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {
+                // Autoplay policy fallback: mute & play until first user interaction
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+              });
+            }
+          }
         }
       } else {
         // Video scrolled away: STOP IMMEDIATELY and silence sound completely
@@ -121,7 +162,26 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
         videoEl.muted = true;
       }
     });
-  }, [activeIndex, isMuted, videos]);
+
+    previousActiveIndex.current = activeIndex;
+  }, [activeIndex, isMuted, pausedVideoId]);
+
+  // Préchargement immédiat et proactif des prochaines vidéos fournies par l'algorithme backend
+  useEffect(() => {
+    if (videos.length === 0) return;
+    for (let offset = 1; offset <= 2; offset++) {
+      const targetIdx = activeIndex + offset;
+      if (targetIdx < videos.length) {
+        const targetEl = videoRefs.current[targetIdx];
+        if (targetEl) {
+          targetEl.preload = 'auto';
+          if (targetEl.readyState < 2) {
+            targetEl.load();
+          }
+        }
+      }
+    }
+  }, [activeIndex, videos]);
 
   // Unmute upon first user interaction if user hasn't explicitly chosen to mute
   const handleUserInteraction = () => {
@@ -144,9 +204,6 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     if (activeEl) {
       activeEl.muted = nextMuted;
     }
-
-    setVolumeToast(nextMuted ? 'Son coupé' : 'Son activé');
-    setTimeout(() => setVolumeToast(null), 1500);
   };
 
   // Handle scroll detection for vertical snap
@@ -157,20 +214,47 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     const newIndex = Math.round(scrollTop / clientHeight);
     if (newIndex !== activeIndex && newIndex >= 0 && newIndex < videos.length) {
       setActiveIndex(newIndex);
+      if (videos[newIndex]) {
+        dataService.setLastFeedPosition(videos[newIndex].id, newIndex);
+      }
+      // Section 10: Infinite replenishment when approaching end
+      if (newIndex >= videos.length - 3) {
+        loadMoreVideos();
+      }
     }
   };
 
-  // Section 25: At 100% video completion, the screen scrolls automatically to the next video!
+  // At 100% video completion:
+  // Immediately trigger next video playback without network waiting, smoothly scroll
   const handleVideoEnded = (index: number) => {
     const video = videos[index];
     if (video) {
-      dataService.recordWatchEvent(video.id, video.duration || 15, true);
+      dataService.recordWatchEvent(video.id, video.duration || 15, true, currentUser?.id);
     }
 
-    if (index < videos.length - 1 && containerRef.current) {
-      const nextTop = (index + 1) * containerRef.current.clientHeight;
+    if (containerRef.current && videos.length > 0) {
+      const nextIndex = (index + 1) % videos.length;
+      const nextTop = nextIndex * containerRef.current.clientHeight;
+
+      // Lancement immédiat sans attendre la connexion (vidéo déjà préchargée)
+      const nextEl = videoRefs.current[nextIndex];
+      if (nextEl) {
+        nextEl.currentTime = 0;
+        nextEl.muted = isMuted;
+        const playPromise = nextEl.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            nextEl.muted = true;
+            nextEl.play().catch(() => {});
+          });
+        }
+      }
+
       containerRef.current.scrollTo({ top: nextTop, behavior: 'smooth' });
-      setActiveIndex(index + 1);
+      setActiveIndex(nextIndex);
+      if (nextIndex >= videos.length - 3) {
+        loadMoreVideos();
+      }
     }
   };
 
@@ -197,20 +281,43 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     }
   };
 
-  // Double tap to like (Master prompt section 27)
-  const handleVideoAreaClick = (e: React.MouseEvent<HTMLElement>, video: Video) => {
+  // Single tap: Play / Pause toggle
+  // Double tap: Like + Heart animation
+  const handleVideoAreaClick = (e: React.MouseEvent<HTMLElement>, video: Video, index: number) => {
     handleUserInteraction();
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      // Double tap detected
-      const rect = e.currentTarget.getBoundingClientRect();
-      triggerHeartAndLike(e.clientX, e.clientY, rect, video);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    if (clickTimerRef.current) {
+      // Double tap detected!
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      triggerHeartAndLike(clientX, clientY, rect, video);
+    } else {
+      // Single tap: toggle Play/Pause after brief debounce
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        const videoEl = videoRefs.current[index];
+        if (videoEl) {
+          if (videoEl.paused) {
+            videoEl.play().catch(() => {});
+            setPausedVideoId(null);
+          } else {
+            videoEl.pause();
+            setPausedVideoId(video.id);
+          }
+        }
+      }, 260);
     }
-    lastTapRef.current = now;
   };
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLElement>, video: Video) => {
     handleUserInteraction();
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     triggerHeartAndLike(e.clientX, e.clientY, rect, video);
   };
@@ -226,7 +333,7 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     );
   };
 
-  // Native Share handler (Facebook, WhatsApp, Telegram, etc.)
+  // Native Share handler (Système de partage natif)
   const handleShare = async (video: Video) => {
     dataService.recordShare(video.id);
     setVideos((prev) =>
@@ -246,10 +353,18 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
 
   // Gallery Download handler (@capacitor/filesystem + @capacitor/media)
   const handleDownload = async (video: Video) => {
+    // Section 15: Vérification de l'autorisation de téléchargement de l'auteur
+    if (video.allowDownload === false) {
+      setShareToast('Le téléchargement est désactivé pour cette vidéo.');
+      setTimeout(() => setShareToast(null), 3000);
+      return;
+    }
+
     setDownloadingVideoId(video.id);
     try {
       const videoSource = (video as unknown as Record<string, string>).video_url || video.videoUrl;
       await saveVideoToGallery(videoSource);
+      dataService.recordDownload(video.id);
     } catch {
       setShareToast('Erreur lors du téléchargement. Veuillez réessayer.');
       setTimeout(() => setShareToast(null), 3500);
@@ -258,24 +373,13 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
     }
   };
 
-  // Empty state if no videos exist (Section 24: "Aucune vidéo disponible pour le moment. Publiez la première vidéo.")
+  // Ensure feed is immediately hydrated without flashing empty notice
   if (videos.length === 0) {
-    return (
-      <div
-        className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none"
-        style={{ backgroundColor: theme.background, color: theme.text }}
-      >
-        <NnecxyLogo size="lg" />
-        <h2 className="mt-5 text-base font-bold">{t.noVideosTitle}</h2>
-        <p className="mt-1 text-xs max-w-xs" style={{ color: theme.text }}>{t.noVideosDesc}</p>
-        <button
-          onClick={onOpenCreate}
-          className="mt-6 px-6 py-2.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-transform shadow-lg"
-        >
-          {t.create}
-        </button>
-      </div>
-    );
+    const freshVideos = dataService.getFeedVideos(0, 15);
+    if (freshVideos.length > 0) {
+      setVideos(freshVideos);
+      return null;
+    }
   }
 
   return (
@@ -284,6 +388,7 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
       ref={containerRef}
       onScroll={handleScroll}
       className="relative w-full h-full overflow-y-scroll snap-y snap-mandatory scrollbar-none bg-black select-none"
+      style={{ height: '100%', scrollSnapType: 'y mandatory' }}
     >
       {/* Toast Notice */}
       {shareToast && (
@@ -295,37 +400,68 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
       {videos.map((video, index) => {
         const isActive = index === activeIndex;
         const isOwnVideo = currentUser?.id === video.userId;
+        const videoSource = (video as any).video_url || video.videoUrl;
 
         return (
           <div
             key={video.id}
             id={`feed-item-${video.id}`}
-            className="relative w-full h-full min-h-full shrink-0 snap-start snap-always flex items-center justify-center overflow-hidden bg-black"
+            className="relative w-full h-full shrink-0 snap-start flex items-center justify-center overflow-hidden bg-black"
+            style={{
+              width: '100%',
+              height: '100%',
+              background: '#000',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              scrollSnapAlign: 'start',
+              scrollSnapStop: 'always',
+              margin: 0,
+              padding: 0,
+            }}
           >
-            {/* Real HTML5 Video Player */}
+            {/* Real HTML5 Video Player - 100% screen occupation */}
             <video
               ref={(el) => {
                 videoRefs.current[index] = el;
               }}
-              src={video.videoUrl}
-              poster={video.thumbnailUrl}
+              src={`${videoSource}#t=0.001`}
               className="w-full h-full object-cover cursor-pointer select-none"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: 0,
+              }}
               loop={false}
               playsInline
-              preload="auto"
+              preload={index === activeIndex || index === activeIndex + 1 ? 'auto' : 'metadata'}
+              disablePictureInPicture
+              controlsList="nodownload nofullscreen noremoteplayback"
               muted={isMuted}
               onEnded={() => handleVideoEnded(index)}
-              onClick={(e) => handleVideoAreaClick(e, video)}
+              onClick={(e) => handleVideoAreaClick(e, video, index)}
               onDoubleClick={(e) => handleDoubleClick(e, video)}
+              {...({ 'webkit-playsinline': 'true', 'x5-playsinline': 'true' } as any)}
             />
+
+            {/* Custom Play/Pause Overlay (No native Android controls) */}
+            {pausedVideoId === video.id && isActive && (
+              <div className="absolute inset-0 z-25 flex items-center justify-center pointer-events-none animate-scale-up">
+                <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-2xl">
+                  <Play size={32} className="ml-1 fill-white text-white" />
+                </div>
+              </div>
+            )}
 
             {/* Top Bar Controls */}
             <div className="absolute top-4 inset-x-4 z-20 flex items-center justify-between pointer-events-none">
-              {/* Official NNECXY Logo (En haut à gauche) */}
-              <div className="pointer-events-auto flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10 shadow-lg">
-                <NnecxyLogo size="sm" glow={false} />
-                <span className="text-[11px] font-extrabold tracking-wider text-blue-500">NNECXY</span>
+              {/* Filigrane discret et transparent NNECXY (En haut à gauche) */}
+              <div className="pointer-events-auto flex items-center gap-1.5 px-2 py-1 select-none opacity-80 hover:opacity-100 transition-opacity">
+                <NnecxyLogo size="sm" watermark={true} transparent={true} />
+                <span className="text-[11px] font-extrabold tracking-widest text-white/75 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                  NNECXY
+                </span>
               </div>
 
               {/* Top Right Controls: Membres de NNECXY + Volume */}
@@ -352,14 +488,6 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
                 </button>
               </div>
             </div>
-
-            {/* Volume Status Toast */}
-            {volumeToast && isActive && (
-              <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-xs font-bold border border-blue-500/40 shadow-xl animate-fade-in flex items-center gap-1.5">
-                {isMuted ? <VolumeX size={14} className="text-red-400" /> : <Volume2 size={14} className="text-blue-400" />}
-                <span>{volumeToast}</span>
-              </div>
-            )}
 
             {/* Double Tap Heart Animation */}
             {doubleTapHeart && isActive && (
@@ -483,6 +611,13 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
 
             {/* Bottom Left Info: Creator name, Follow button, caption, audio track */}
             <div className="absolute left-4 bottom-6 right-16 z-20 text-white space-y-2">
+              {/* Category badge (Section 6) */}
+              {video.category && (
+                <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white shadow-sm">
+                  <span>{video.category}</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-2.5 flex-wrap">
                 <div
                   onClick={() => onOpenCreatorProfile(video.userId)}
@@ -549,8 +684,13 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({
           videoId={activeCommentVideoId}
           isOpen={Boolean(activeCommentVideoId)}
           onClose={() => {
+            const commentCount = dataService.getComments(activeCommentVideoId).length;
+            setVideos((prev) =>
+              prev.map((v) =>
+                v.id === activeCommentVideoId ? { ...v, commentsCount: commentCount } : v
+              )
+            );
             setActiveCommentVideoId(null);
-            loadFeed();
           }}
           currentUser={currentUser}
         />

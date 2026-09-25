@@ -256,60 +256,101 @@ export const RulesScreen: React.FC<RulesScreenProps> = ({
         )}
 
         {/* ========================================================
-            TAB 3: CONFIDENTIALITÉ & DONNÉES (14 jours de grâce)
+            TAB 3: CONFIDENTIALITÉ & DONNÉES (Conformité Google Play Store)
            ======================================================== */}
         {activeTab === 'privacy' && (
           <div className="space-y-4">
-            {/* 3.1 Données collectées */}
+            {/* 3.1 Déclaration de sécurité des données (Play Store Data Safety) */}
             <div
               className="p-4 rounded-2xl border space-y-2"
               style={{ backgroundColor: theme.card, borderColor: theme.border }}
             >
               <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
                 <Lock size={16} />
-                <h4>1. Vos Données Personnelles</h4>
+                <h4>1. Déclaration de Sécurité des Données (Google Play)</h4>
               </div>
               <p className="text-xs opacity-85 leading-relaxed">
-                NNECXY collecte uniquement les données nécessaires au bon fonctionnement de votre compte :
-                numéro de téléphone ou e-mail de connexion, pseudonyme, photo de profil et historique de vos
-                publications. Vos données privées ne sont ni cédées ni revendues.
-              </p>
-            </div>
-
-            {/* 3.2 Session active */}
-            <div
-              className="p-4 rounded-2xl border space-y-2"
-              style={{ backgroundColor: theme.card, borderColor: theme.border }}
-            >
-              <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-                <FileText size={16} />
-                <h4>2. Gestion de Session Sécurisée</h4>
-              </div>
-              <p className="text-xs opacity-85 leading-relaxed">
-                Votre session reste active sur votre appareil pour vous éviter de saisir constamment vos
-                identifiants. Si vous choisissez de vous déconnecter manuellement depuis les Paramètres, une
-                authentification complète sera obligatoirement requise pour réaccéder au flux.
-              </p>
-            </div>
-
-            {/* 3.3 Droit à l'oubli et période de grâce de 14 jours */}
-            <div
-              className="p-4 rounded-2xl border space-y-2"
-              style={{ backgroundColor: theme.card, borderColor: theme.border }}
-            >
-              <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-                <Lock size={16} />
-                <h4>3. Droit à l'oubli & Période de grâce de 14 jours</h4>
-              </div>
-              <p className="text-xs opacity-85 leading-relaxed">
-                Vous avez le plein contrôle sur votre compte. En demandant la suppression de votre compte dans les
-                Paramètres :
+                NNECXY s’engage à protéger la vie privée de ses utilisateurs conformément aux exigences du
+                Google Play Store et aux réglementations internationales de protection des données (RGPD) :
               </p>
               <ul className="text-xs opacity-85 space-y-1.5 list-disc pl-4">
-                <li>Une période de grâce de <strong>14 jours</strong> est automatiquement enclenchée.</li>
-                <li>Durant ce délai, vous pouvez annuler la suppression à tout moment par simple reconnexion.</li>
-                <li>À l'expiration des 14 jours, l’ensemble de vos vidéos, likes, commentaires et profil sont purgés définitivement et sans recours possible.</li>
+                <li><strong>Données d'identification :</strong> Nom, prénom, pseudonyme (@handle), numéro de téléphone ou e-mail de connexion.</li>
+                <li><strong>Contenus créés (UGC) :</strong> Vidéos importées et publiées volontairement par l'utilisateur, légendes et tags associés.</li>
+                <li><strong>Données d'interaction :</strong> Likes, commentaires et abonnements pour personnaliser le flux selon l'algorithme.</li>
+                <li><strong>Finalité exclusive :</strong> Fonctionnement de l'application, sécurité des comptes et modération. Vos données ne sont jamais vendues ni cédées à des tiers.</li>
               </ul>
+            </div>
+
+            {/* 3.2 Procédure de suppression de compte & Délai de grâce 14 jours (Play Store Account Deletion Policy) */}
+            <div
+              className="p-4 rounded-2xl border space-y-2"
+              style={{ backgroundColor: theme.card, borderColor: theme.border }}
+            >
+              <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+                <ShieldCheck size={16} />
+                <h4>2. Suppression du Compte & Droit à l'Oubli (Période de grâce de 14 jours)</h4>
+              </div>
+              <p className="text-xs opacity-85 leading-relaxed">
+                Conformément aux politiques de suppression de compte de Google Play :
+              </p>
+              <ul className="text-xs opacity-85 space-y-1.5 list-disc pl-4">
+                <li>Tout utilisateur peut demander la suppression complète de son compte directement dans l'application depuis <strong>Paramètres &gt; Supprimer mon compte</strong>.</li>
+                <li>Une <strong>période de grâce de 14 jours</strong> s'enclenche automatiquement pour prévenir les suppressions accidentelles ou malveillantes. Durant cette période, l'utilisateur peut annuler sa demande à tout moment.</li>
+                <li>À l'expiration des 14 jours, l'intégralité des données (profil, identifiants, vidéos hébergées, commentaires, likes) est définitivement et irréversiblement effacée de nos serveurs.</li>
+                <li>Une demande de suppression peut également être transmise par écrit à l'adresse officielle : <strong>privacy@nnecxy.com</strong>.</li>
+              </ul>
+            </div>
+
+            {/* 3.3 Protection des mineurs & Tolérance zéro CSAM */}
+            <div
+              className="p-4 rounded-2xl border space-y-2"
+              style={{ backgroundColor: theme.card, borderColor: '#DC2626' }}
+            >
+              <div className="flex items-center gap-2 text-red-600 font-bold text-xs">
+                <AlertTriangle size={16} />
+                <h4>3. Protection absolue des Enfants & Tolérance Zéro CSAM</h4>
+              </div>
+              <p className="text-xs opacity-85 leading-relaxed">
+                NNECXY applique une politique de tolérance zéro absolue à l'égard de toute forme d'exploitation
+                ou d'abus sexuel sur des mineurs (CSAM/CSAE). L'application est strictement interdite aux mineurs de moins
+                de 18 ans. Tout compte suspect est banni immédiatement et signalé sans délai aux autorités judiciaires
+                et aux organismes de protection de l'enfance.
+              </p>
+            </div>
+
+            {/* 3.4 Modération et signalement des contenus (UGC) */}
+            <div
+              className="p-4 rounded-2xl border space-y-2"
+              style={{ backgroundColor: theme.card, borderColor: theme.border }}
+            >
+              <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+                <CheckCircle2 size={16} />
+                <h4>4. Modération des Contenus Générés par les Utilisateurs (UGC)</h4>
+              </div>
+              <p className="text-xs opacity-85 leading-relaxed">
+                Pour garantir un environnement respectueux :
+              </p>
+              <ul className="text-xs opacity-85 space-y-1.5 list-disc pl-4">
+                <li>Chaque vidéo intègre un système de signalement direct accessible en 1 clic.</li>
+                <li>Notre équipe de modération traite les signalements sous un délai maximum de 24 heures.</li>
+                <li>Tout contenu atteignant 5 signalements valides est immédiatement retiré du flux public.</li>
+                <li>Les utilisateurs peuvent bloquer instantanément tout profil indésirable.</li>
+              </ul>
+            </div>
+
+            {/* 3.5 Contact légal & Délégué à la protection des données */}
+            <div
+              className="p-3.5 rounded-2xl border text-xs space-y-1.5"
+              style={{ backgroundColor: theme.card, borderColor: theme.border }}
+            >
+              <div className="flex items-center gap-2 text-blue-500 font-bold text-[11px]">
+                <FileText size={14} />
+                <span>Contact Confidentialité & Réclamations Google Play</span>
+              </div>
+              <p className="text-[11px] opacity-80">
+                Pour toute question relative à vos données personnelles ou pour exercer vos droits d'accès,
+                de rectification ou d'effacement : <strong>privacy@nnecxy.com</strong> / <strong>contact@nnecxy.com</strong>.
+              </p>
             </div>
           </div>
         )}

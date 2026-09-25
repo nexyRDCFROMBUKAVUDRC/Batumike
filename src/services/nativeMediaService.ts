@@ -25,7 +25,7 @@ export interface DownloadResult {
 
 export const nativeMediaService = {
   /**
-   * Partage natif Facebook, WhatsApp, Telegram, etc.
+   * Partage natif via les applications du système d'exploitation.
    * Utilise d'abord navigator.share, puis @capacitor/share en cas d'échec ou d'indisponibilité.
    */
   async shareVideo(params: ShareVideoParams): Promise<ShareResult> {
@@ -206,7 +206,7 @@ export const nativeMediaService = {
 
   /**
    * Système de routage des liens profonds (App Links & Deep Links)
-   * Quand l'utilisateur clique sur https://nnecxy.com/video/ID sur WhatsApp ou Messenger,
+   * Quand l'utilisateur clique sur https://nnecxy.com/video/ID sur une messagerie ou un navigateur,
    * l'application s'ouvre directement sur la vidéo correspondante.
    */
   initDeepLinks(onVideoOpened: (videoId: string) => void): () => void {

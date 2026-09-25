@@ -1,6 +1,22 @@
+export const NNECXY_CATEGORIES = [
+  '😂 Comédie',
+  '🎵 Musique',
+  '💃 Danse',
+  '📚 Éducation',
+  '🙏 Motivation / Religion',
+  '⚽ Sport',
+  '📰 Actualité Goma',
+  '🎬 Film / Série',
+  '👶 Dessin Animé',
+  '🏪 Business',
+] as const;
+
+export type NnecxyCategory = typeof NNECXY_CATEGORIES[number];
+
 export interface User {
   id: string;
   name: string;
+  postNom?: string; // Post-nom (spécificité RDC / Afrique centrale : Nom, Post-nom, Prénom)
   surname: string;
   email?: string;
   phone?: string;
@@ -16,7 +32,14 @@ export interface User {
   isFollowed?: boolean;
   authProvider?: 'email' | 'google' | 'phone' | 'apple' | 'oauth' | 'sso';
   deletionScheduledAt?: string | null; // For 14-day deletion rule
+  securityCode?: string; // Code fourni lors de la création du compte (requis pour suppression)
+  interests?: NnecxyCategory[]; // Préférences de l'utilisateur (Section 7)
+  passwordHash?: string; // Haché de sécurité (Section 15, 17)
+  isOnline?: boolean; // Présence en ligne pour la messagerie
+  lastActive?: string;
 }
+
+export type VideoStatus = 'pending' | 'approved' | 'rejected' | 'deleted';
 
 export interface Video {
   id: string;
@@ -29,8 +52,11 @@ export interface Video {
     isVerified: boolean;
   };
   videoUrl: string;
+  video_url?: string;
   thumbnailUrl: string;
   caption: string;
+  category?: NnecxyCategory; // Catégorie obligatoire (Section 6)
+  status?: VideoStatus; // Statut backend (Section 3: pending, approved, rejected, deleted)
   tags: string[];
   likesCount: number;
   commentsCount: number;
@@ -43,6 +69,21 @@ export interface Video {
   sizeBytes?: number;
   allowDownload?: boolean;
   createdAt: string;
+}
+
+export interface VideoAnalytics {
+  impressions: number;
+  playsStarted: number;
+  validViews: number;
+  watchTimeSeconds: number;
+  avgWatchPercentage: number;
+  completions: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  downloads: number;
+  followsGenerated: number;
+  unfollowsGenerated: number;
 }
 
 export interface Comment {
@@ -123,6 +164,7 @@ export interface VideoDraft {
   }>;
   caption?: string;
   tags?: string[];
+  category?: NnecxyCategory;
 }
 
 export interface PhoneMediaAsset {

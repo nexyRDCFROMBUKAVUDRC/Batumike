@@ -3,6 +3,7 @@ import { User } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useI18n } from '../context/I18nContext';
 import { dataService } from '../services/dataService';
+import { MemberActionModal } from './MemberActionModal';
 import {
   X,
   Search,
@@ -33,30 +34,28 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMemberForAction, setSelectedMemberForAction] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const loadUsers = () => {
-    const list = dataService.getAllUsers();
-    setAllUsers(list);
+  const loadUsers = async (query = '') => {
+    setLoading(true);
+    try {
+      const list = await dataService.fetchRealMembers(query);
+      setAllUsers(list);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (isOpen) {
-      loadUsers();
+      loadUsers(searchQuery);
     }
-  }, [isOpen]);
+  }, [isOpen, searchQuery]);
 
   if (!isOpen) return null;
 
-  const filteredUsers = allUsers.filter((u) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      u.name.toLowerCase().includes(q) ||
-      u.surname.toLowerCase().includes(q) ||
-      u.handle.toLowerCase().includes(q) ||
-      (u.bio && u.bio.toLowerCase().includes(q))
-    );
-  });
+  const filteredUsers = allUsers;
 
   const handleFollowToggle = (userId: string) => {
     if (!currentUser) return;
@@ -139,7 +138,7 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un membre par nom ou @handle..."
+              placeholder="Rechercher un membre"
               className="flex-1 bg-transparent focus:outline-none"
               style={{ color: theme.text }}
             />
@@ -174,12 +173,9 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
                     borderColor: theme.border,
                   }}
                 >
-                  {/* User info clickable to profile */}
+                  {/* User info clickable to action menu */}
                   <div
-                    onClick={() => {
-                      onOpenCreatorProfile(user.id);
-                      onClose();
-                    }}
+                    onClick={() => setSelectedMemberForAction(user)}
                     className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
                   >
                     <div className="relative shrink-0">
@@ -222,13 +218,23 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions: Suivre & Écrire */}
+                  {/* Actions: Menu / Suivre & Écrire */}
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      id={`btn-member-action-${user.id}`}
+                      onClick={() => setSelectedMemberForAction(user)}
+                      className="px-2.5 py-1.5 rounded-full text-xs font-bold bg-blue-600/15 text-blue-500 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                    >
+                      Options
+                    </button>
                     {!isMe && (
                       <>
                         <button
                           id={`btn-member-follow-${user.id}`}
-                          onClick={() => handleFollowToggle(user.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowToggle(user.id);
+                          }}
                           className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all active:scale-95 ${
                             user.isFollowed
                               ? 'bg-neutral-800 text-white border border-neutral-700'
@@ -250,7 +256,8 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
 
                         <button
                           id={`btn-member-chat-${user.id}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             onOpenDirectChat(user.id);
                             onClose();
                           }}
@@ -268,6 +275,29 @@ export const CommunityMembersModal: React.FC<CommunityMembersModalProps> = ({
             })
           )}
         </div>
+
+        {/* Member Action Modal (Suivre, Écrire un message, Voir le profil) */}
+        {selectedMemberForAction && (
+          <MemberActionModal
+            isOpen={Boolean(selectedMemberForAction)}
+            member={selectedMemberForAction}
+            currentUser={currentUser}
+            onClose={() => setSelectedMemberForAction(null)}
+            onOpenCreatorProfile={(userId) => {
+              setSelectedMemberForAction(null);
+              onOpenCreatorProfile(userId);
+              onClose();
+            }}
+            onOpenDirectChat={(userId) => {
+              setSelectedMemberForAction(null);
+              onOpenDirectChat(userId);
+              onClose();
+            }}
+            onFollowChanged={(userId, isFollowed) => {
+              handleFollowToggle(userId);
+            }}
+          />
+        )}
       </div>
     </div>
   );

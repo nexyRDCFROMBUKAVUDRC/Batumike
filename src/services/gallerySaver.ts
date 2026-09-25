@@ -16,7 +16,7 @@ export const showGalleryToast = (message: string) => {
 };
 
 /**
- * Saves a video directly to the phone's native Gallery (like TikTok).
+ * Saves a video directly to the device's native Gallery.
  * Uses @capacitor/filesystem (Directory.Cache) + @capacitor-community/media (Media.savePhoto / Media.saveVideo).
  * Includes permission requests and cleanup of temporary cache files.
  * Falls back to browser direct download if not in a native container or if native saving fails.
